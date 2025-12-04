@@ -341,6 +341,74 @@ export default function SharedTrip() {
       // Set overlaps from AI result
       let overlapsList = result.overlaps || [];
       
+      // Helper to find the relevant leg for a given overlap date range
+      const findRelevantLeg = (itinerary, overlapStart, overlapEnd) => {
+        if (!itinerary?.legs?.length) return null;
+        
+        const overlapStartDate = new Date(overlapStart);
+        const overlapEndDate = new Date(overlapEnd);
+        
+        // Find leg that overlaps with the meetup dates
+        for (const leg of itinerary.legs) {
+          const legStart = new Date(leg.startDate);
+          const legEnd = new Date(leg.endDate);
+          
+          // Check if there's any overlap between leg dates and meetup dates
+          if (legStart <= overlapEndDate && legEnd >= overlapStartDate) {
+            return leg;
+          }
+        }
+        
+        // If no exact overlap, find the closest leg
+        let closestLeg = itinerary.legs[0];
+        let minDistance = Infinity;
+        
+        for (const leg of itinerary.legs) {
+          const legStart = new Date(leg.startDate);
+          const legEnd = new Date(leg.endDate);
+          
+          const distanceStart = Math.abs(overlapStartDate - legEnd);
+          const distanceEnd = Math.abs(overlapEndDate - legStart);
+          const minDist = Math.min(distanceStart, distanceEnd);
+          
+          if (minDist < minDistance) {
+            minDistance = minDist;
+            closestLeg = leg;
+          }
+        }
+        
+        return closestLeg;
+      };
+      
+      // Enrich each overlap with traveler info from itineraries
+      overlapsList = overlapsList.map(overlap => {
+        // Find relevant legs for each traveler based on overlap dates
+        const traveler1Leg = findRelevantLeg(primaryItinerary, overlap.startDate, overlap.endDate);
+        const traveler2Leg = findRelevantLeg(friendItinerary, overlap.startDate, overlap.endDate);
+        
+        // Build enriched traveler info, using API data if available, otherwise from itinerary
+        const traveler1From = {
+          city: overlap.traveler1From?.city || traveler1Leg?.city || primaryItinerary?.legs?.[0]?.city || '',
+          country: overlap.traveler1From?.country || traveler1Leg?.country || primaryItinerary?.legs?.[0]?.country || '',
+          dates: overlap.traveler1From?.dates || (traveler1Leg ? `${formatDateShort(traveler1Leg.startDate)} - ${formatDateShort(traveler1Leg.endDate)}` : '')
+        };
+        
+        const traveler2From = {
+          city: overlap.traveler2From?.city || traveler2Leg?.city || friendItinerary?.legs?.[0]?.city || '',
+          country: overlap.traveler2From?.country || traveler2Leg?.country || friendItinerary?.legs?.[0]?.country || '',
+          dates: overlap.traveler2From?.dates || (traveler2Leg ? `${formatDateShort(traveler2Leg.startDate)} - ${formatDateShort(traveler2Leg.endDate)}` : '')
+        };
+        
+        return {
+          ...overlap,
+          traveler1From,
+          traveler2From,
+          // Also add legacy fields for backwards compatibility
+          traveler1Location: traveler1From,
+          traveler2Location: traveler2From
+        };
+      });
+      
       // Check if trips are too far apart/unrealistic to meet up
       const hasNaturalOverlap = overlapsList.some(o => o.type === 'natural');
       
@@ -623,8 +691,72 @@ export default function SharedTrip() {
       const result = await getMoreMeetupOptions(primaryItinerary, friendItinerary, existingCities);
       
       if (result.overlaps && result.overlaps.length > 0) {
+        // Helper to find the relevant leg for a given overlap date range
+        const findRelevantLeg = (itinerary, overlapStart, overlapEnd) => {
+          if (!itinerary?.legs?.length) return null;
+          
+          const overlapStartDate = new Date(overlapStart);
+          const overlapEndDate = new Date(overlapEnd);
+          
+          // Find leg that overlaps with the meetup dates
+          for (const leg of itinerary.legs) {
+            const legStart = new Date(leg.startDate);
+            const legEnd = new Date(leg.endDate);
+            
+            if (legStart <= overlapEndDate && legEnd >= overlapStartDate) {
+              return leg;
+            }
+          }
+          
+          // If no exact overlap, find the closest leg
+          let closestLeg = itinerary.legs[0];
+          let minDistance = Infinity;
+          
+          for (const leg of itinerary.legs) {
+            const legStart = new Date(leg.startDate);
+            const legEnd = new Date(leg.endDate);
+            
+            const distanceStart = Math.abs(overlapStartDate - legEnd);
+            const distanceEnd = Math.abs(overlapEndDate - legStart);
+            const minDist = Math.min(distanceStart, distanceEnd);
+            
+            if (minDist < minDistance) {
+              minDistance = minDist;
+              closestLeg = leg;
+            }
+          }
+          
+          return closestLeg;
+        };
+        
+        // Enrich new overlaps with traveler info
+        const enrichedOverlaps = result.overlaps.map(overlap => {
+          const traveler1Leg = findRelevantLeg(primaryItinerary, overlap.startDate, overlap.endDate);
+          const traveler2Leg = findRelevantLeg(friendItinerary, overlap.startDate, overlap.endDate);
+          
+          const traveler1From = {
+            city: overlap.traveler1From?.city || traveler1Leg?.city || primaryItinerary?.legs?.[0]?.city || '',
+            country: overlap.traveler1From?.country || traveler1Leg?.country || primaryItinerary?.legs?.[0]?.country || '',
+            dates: overlap.traveler1From?.dates || (traveler1Leg ? `${formatDateShort(traveler1Leg.startDate)} - ${formatDateShort(traveler1Leg.endDate)}` : '')
+          };
+          
+          const traveler2From = {
+            city: overlap.traveler2From?.city || traveler2Leg?.city || friendItinerary?.legs?.[0]?.city || '',
+            country: overlap.traveler2From?.country || traveler2Leg?.country || friendItinerary?.legs?.[0]?.country || '',
+            dates: overlap.traveler2From?.dates || (traveler2Leg ? `${formatDateShort(traveler2Leg.startDate)} - ${formatDateShort(traveler2Leg.endDate)}` : '')
+          };
+          
+          return {
+            ...overlap,
+            traveler1From,
+            traveler2From,
+            traveler1Location: traveler1From,
+            traveler2Location: traveler2From
+          };
+        });
+        
         // Add new options to the existing list
-        setOverlaps(prev => [...prev, ...result.overlaps]);
+        setOverlaps(prev => [...prev, ...enrichedOverlaps]);
       }
     } catch (error) {
       console.error('Error loading more options:', error);
