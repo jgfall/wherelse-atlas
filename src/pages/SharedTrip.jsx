@@ -1033,9 +1033,18 @@ export default function SharedTrip() {
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
   };
   
+  // Parse YYYY-MM-DD as local date to avoid timezone issues
+  const parseLocalDate = (dateStr) => {
+    if (typeof dateStr === 'string' && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      return new Date(year, month - 1, day);
+    }
+    return new Date(dateStr);
+  };
+  
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
+    const date = parseLocalDate(dateStr);
     const month = date.toLocaleDateString('en-US', { month: 'long' });
     const day = getOrdinal(date.getDate());
     return `${month} ${day}`;
@@ -1043,7 +1052,7 @@ export default function SharedTrip() {
   
   const formatDateLong = (dateStr) => {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
+    const date = parseLocalDate(dateStr);
     const month = date.toLocaleDateString('en-US', { month: 'long' });
     const day = getOrdinal(date.getDate());
     const year = date.getFullYear();
@@ -1052,7 +1061,7 @@ export default function SharedTrip() {
   
   const formatDateShort = (dateStr) => {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
+    const date = parseLocalDate(dateStr);
     const month = date.toLocaleDateString('en-US', { month: 'short' });
     const day = getOrdinal(date.getDate());
     return `${month} ${day}`;

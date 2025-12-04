@@ -65,7 +65,14 @@ const WherelseAtlas = () => {
     saveItineraries(itineraries);
   }, [itineraries]);
 
-  const parseDate = (dateStr) => new Date(dateStr);
+  // Parse YYYY-MM-DD as local date to avoid timezone issues
+  const parseDate = (dateStr) => {
+    if (typeof dateStr === 'string' && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      return new Date(year, month - 1, day);
+    }
+    return new Date(dateStr);
+  };
   
   // Natural date formatting with ordinals
   const getOrdinal = (n) => {
@@ -76,7 +83,7 @@ const WherelseAtlas = () => {
   
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
+    const date = parseDate(dateStr);
     const month = date.toLocaleDateString('en-US', { month: 'long' });
     const day = getOrdinal(date.getDate());
     return `${month} ${day}`;
@@ -84,7 +91,7 @@ const WherelseAtlas = () => {
 
   const formatDateLong = (dateStr) => {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
+    const date = parseDate(dateStr);
     const month = date.toLocaleDateString('en-US', { month: 'long' });
     const day = getOrdinal(date.getDate());
     const year = date.getFullYear();
@@ -1884,10 +1891,10 @@ const WherelseAtlas = () => {
                         const t2Left = getPosition(t2Start);
                         const t2Width = getWidth(t2Start, t2End);
                         
-                        // Format short date
+                        // Format short date - use parseDate to avoid timezone issues
                         const formatShortDate = (dateStr) => {
                           if (!dateStr) return '';
-                          const d = new Date(dateStr);
+                          const d = parseDate(dateStr);
                           if (isNaN(d.getTime())) return dateStr;
                           return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                         };
@@ -2124,7 +2131,7 @@ const WherelseAtlas = () => {
                         
                         const formatShortDate = (dateStr) => {
                           if (!dateStr) return '';
-                          const d = new Date(dateStr);
+                          const d = parseDate(dateStr);
                           if (isNaN(d.getTime())) return dateStr;
                           return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                         };
