@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Share2, Loader2, Plus } from 'lucide-react';
+import { Share2, Loader2, Plus, X, Edit2 } from 'lucide-react';
 import { saveItineraryToCloud, createSharedTrip } from './lib/supabase';
 import TripMap from './components/TripMap';
 import TripTimeline from './components/TripTimeline';
@@ -9,6 +9,8 @@ import DestinationCard from './components/DestinationCard';
 import ShareModal from './components/ShareModal';
 import ImageUploadPreview from './components/ImageUploadPreview';
 import ShareCTA from './components/ShareCTA';
+import LocationAutocomplete from './components/LocationAutocomplete';
+import DateRangePicker from './components/DateRangePicker';
 import { parseItineraryImage, isValidImageFile, getImagePreviewUrl } from './utils/imageParser';
 
 const WherelseAtlas = () => {
@@ -17,6 +19,7 @@ const WherelseAtlas = () => {
   const [nameConfirmed, setNameConfirmed] = useState(false);
   const [legs, setLegs] = useState([]);
   const [isAddingLeg, setIsAddingLeg] = useState(false);
+  const [editingLegId, setEditingLegId] = useState(null);
   
   // Form state for adding legs
   const [newLegLocation, setNewLegLocation] = useState(null);
@@ -191,6 +194,13 @@ const WherelseAtlas = () => {
     setLegs(prev => prev.filter(leg => leg.id !== legId));
   };
 
+  const updateLeg = (legId, updates) => {
+    setLegs(prev => prev.map(leg => 
+      leg.id === legId ? { ...leg, ...updates } : leg
+    ));
+    setEditingLegId(null);
+  };
+
   const resetAddForm = () => {
     setNewLegLocation(null);
     setNewLegDates({ startDate: null, endDate: null });
@@ -239,6 +249,84 @@ const WherelseAtlas = () => {
   // ============================================
 
   const hasTrip = legs.length > 0;
+
+  // ============================================
+  // Leg Edit Form Component
+  // ============================================
+  
+  const LegEditForm = ({ leg, onSave, onCancel, suggestedStartDate, allLegs = [] }) => {
+    const [editLocation, setEditLocation] = useState({ 
+      city: leg.city, 
+      country: leg.country,
+      lat: leg.lat || null,
+      lng: leg.lng || null
+    });
+    const [editDates, setEditDates] = useState({ startDate: leg.startDate, endDate: leg.endDate });
+
+    const handleSave = () => {
+      if (!editLocation.city || !editDates.startDate || !editDates.endDate) return;
+      
+      onSave({
+        city: editLocation.city,
+        country: editLocation.country,
+        startDate: editDates.startDate,
+        endDate: editDates.endDate,
+        lat: editLocation.lat,
+        lng: editLocation.lng,
+      });
+    };
+
+    return (
+      <div className="p-4 bg-wherelse-charcoal-dark rounded-lg border-2 border-wherelse-yellow animate-scale-in">
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-wherelse-cream opacity-60 mb-1 block">Location</label>
+            <LocationAutocomplete
+              onSelect={(loc) => {
+                if (loc) {
+                  setEditLocation({ 
+                    city: loc.city, 
+                    country: loc.country,
+                    lat: loc.lat,
+                    lng: loc.lng
+                  });
+                }
+              }}
+              placeholder="Search for a city..."
+              initialValue={editLocation}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-wherelse-cream opacity-60 mb-1 block">Dates</label>
+            <DateRangePicker
+              startDate={editDates.startDate}
+              endDate={editDates.endDate}
+              onRangeSelect={setEditDates}
+              suggestedStartDate={suggestedStartDate}
+              blockedRanges={allLegs
+                .filter(l => l.id !== leg.id)
+                .map(l => ({ startDate: l.startDate, endDate: l.endDate }))}
+            />
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={handleSave}
+              disabled={!editLocation.city || !editDates.startDate || !editDates.endDate}
+              className="flex-1 px-4 py-2 bg-wherelse-yellow text-wherelse-charcoal rounded-lg hover:bg-wherelse-yellow/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            >
+              Save
+            </button>
+            <button
+              onClick={onCancel}
+              className="px-4 py-2 bg-wherelse-charcoal text-wherelse-cream rounded-lg hover:bg-wherelse-charcoal-dark transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // ============================================
   // Render
@@ -403,13 +491,50 @@ const WherelseAtlas = () => {
             {/* Destinations List */}
             <div className="space-y-3">
               {legs.map((leg, idx) => (
-                <DestinationCard
-                  key={leg.id}
-                  leg={leg}
-                  index={idx}
-                  onRemove={removeLeg}
-                  formatDate={formatDate}
-                />
+                editingLegId === leg.id ? (
+                  // Edit Form
+                  <LegEditForm
+                    key={leg.id}
+                    leg={leg}
+                    allLegs={legs}
+                    onSave={(updated) => updateLeg(leg.id, updated)}
+                    onCancel={() => setEditingLegId(null)}
+                    suggestedStartDate={idx > 0 ? legs[idx - 1].endDate : null}
+                  />
+                ) : (
+                  // Display Card
+                  <div 
+                    key={leg.id} 
+                    className="card-cream p-4 flex items-center gap-4 group"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-wherelse-charcoal/10 flex items-center justify-center font-mono text-sm font-bold text-wherelse-charcoal">
+                      {String(idx + 1).padStart(2, '0')}
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-body font-semibold text-wherelse-charcoal">{leg.city}</h4>
+                      <p className="text-sm text-wherelse-charcoal/60">{leg.country}</p>
+                      <p className="text-xs font-mono text-wherelse-charcoal/50 mt-1">
+                        {formatDate(leg.startDate)} — {formatDate(leg.endDate)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => setEditingLegId(leg.id)}
+                        className="p-2 text-wherelse-charcoal/30 hover:text-wherelse-yellow transition-colors"
+                        title="Edit"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => removeLeg(leg.id)}
+                        className="p-2 text-wherelse-charcoal/30 hover:text-red-500 transition-colors"
+                        title="Remove"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )
               ))}
             </div>
 
