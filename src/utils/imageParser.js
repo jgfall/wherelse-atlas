@@ -45,10 +45,10 @@ function ensureFutureDate(dateStr) {
  * @returns {Promise<{travelerName: string, legs: Array}>}
  */
 export async function parseItineraryImage(imageFile) {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  const apiKey = import.meta.env.OPENAI_API_KEY;
   
   if (!apiKey) {
-    throw new Error('OpenAI API key is not configured. Please set VITE_OPENAI_API_KEY in your .env file.');
+    throw new Error('OpenAI API key is not configured. Please set OPENAI_API_KEY in your .env file.');
   }
   
   // Convert image to base64
