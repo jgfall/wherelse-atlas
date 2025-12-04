@@ -30,6 +30,11 @@ export default function SharedTrip() {
   const [friendItinerary, setFriendItinerary] = useState(null);
   const [overlaps, setOverlaps] = useState([]);
   
+  // Geocoding and comparison flow state
+  const [isGeocodingFriend, setIsGeocodingFriend] = useState(false);
+  const [geocodingComplete, setGeocodingComplete] = useState(false);
+  const [readyToCompare, setReadyToCompare] = useState(false);
+  
   // Friend's itinerary builder state
   const [showBuilder, setShowBuilder] = useState(false);
   const [friendName, setFriendName] = useState('');
@@ -2123,7 +2128,7 @@ export default function SharedTrip() {
                     {/* For NATURAL and NEAR-MISS (same city): Show Timeline */}
                     {/* For POTENTIAL (meeting halfway): Show Map of locations */}
                     {(selectedMeetup.type !== 'potential') ? (
-                      // Timeline for natural overlaps (same city)
+                      // Timeline for natural overlaps (same city) - Mobile optimized
                       (() => {
                         const parseDateRange = (dateStr) => {
                           if (!dateStr) return { start: null, end: null };
@@ -2158,91 +2163,78 @@ export default function SharedTrip() {
                         const allDates = [t1Start, t1End, t2Start, t2End].filter(Boolean);
                         if (allDates.length < 4) return null;
                         
-                        const minDate = new Date(Math.min(...allDates.map(d => d.getTime())));
-                        const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())));
+                        // Tight date range: just the actual dates with 1 day padding
+                        const minDate = new Date(Math.min(...allDates.map(d => d.getTime())) - 86400000);
+                        const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())) + 86400000);
+                        const totalDays = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)) + 1;
                         
-                        const rangeStart = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
-                        const rangeEnd = new Date(maxDate.getFullYear(), maxDate.getMonth() + 2, 0);
-                        const totalDays = Math.ceil((rangeEnd - rangeStart) / (1000 * 60 * 60 * 24)) + 1;
+                        const getPos = (d) => Math.max(0, Math.min(100, ((d.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24)) / totalDays * 100));
+                        const getWidth = (s, e) => Math.max(15, ((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24) + 1) / totalDays * 100);
                         
-                        const getPos = (d) => ((d.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24)) / totalDays * 100;
-                        const getWidth = (s, e) => ((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24) + 1) / totalDays * 100;
-                        
-                        const months = [];
-                        let current = new Date(rangeStart);
-                        while (current <= rangeEnd) {
-                          months.push({
-                            label: current.toLocaleDateString('en-US', { month: 'long' }).toUpperCase(),
-                            pos: getPos(current)
-                          });
-                          current = new Date(current.getFullYear(), current.getMonth() + 1, 1);
-                        }
-                        
-                        const formatDateShort = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
+                        const formatDateShort = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        const getFirstName = (name) => name?.split(' ')[0] || name || '?';
                         
                         return (
-                          <div className="mb-6 p-5 bg-wherelse-charcoal/60 rounded-xl">
-                            <p className="text-xs text-wherelse-cream/50 font-condensed tracking-widest mb-4 uppercase">
+                          <div className="mb-6 p-4 bg-wherelse-charcoal/60 rounded-xl">
+                            <p className="text-xs text-wherelse-cream/50 font-condensed tracking-widest mb-3 uppercase">
                               Timeline in {selectedMeetup.city}
                             </p>
                             
-                            <div className="relative" style={{ height: '150px' }}>
-                              {months.map((m, i) => (
-                                <div
-                                  key={i}
-                                  className="absolute top-0 bottom-6 w-px bg-wherelse-cream/10"
-                                  style={{ left: `${m.pos}%` }}
+                            {/* Simplified vertical stack layout for mobile */}
+                            <div className="space-y-4">
+                              {/* Traveler 1 */}
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-wherelse-yellow flex items-center justify-center text-wherelse-charcoal font-bold text-lg shrink-0">
+                                  {getFirstName(selectedMeetup.travelers?.[0])?.[0]}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-wherelse-cream truncate">
+                                    {getFirstName(selectedMeetup.travelers?.[0])}
+                                  </p>
+                                  <p className="text-xs font-mono text-wherelse-yellow">
+                                    {formatDateShort(t1Start)} – {formatDateShort(t1End)}
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              {/* Visual timeline bar */}
+                              <div className="relative h-16 bg-wherelse-charcoal/40 rounded-lg overflow-hidden">
+                                {/* Traveler 1 bar */}
+                                <div 
+                                  className="absolute top-2 h-5 bg-wherelse-yellow rounded"
+                                  style={{ 
+                                    left: `${getPos(t1Start)}%`, 
+                                    width: `${getWidth(t1Start, t1End)}%`,
+                                  }}
                                 />
-                              ))}
-                              
-                              <div 
-                                className="absolute"
-                                style={{ 
-                                  left: `${getPos(t1Start)}%`, 
-                                  width: `${getWidth(t1Start, t1End)}%`,
-                                  top: '8px'
-                                }}
-                              >
-                                <div className="flex justify-between mb-1 text-[11px] font-mono text-wherelse-yellow font-medium">
-                                  <span>{formatDateShort(t1Start)}</span>
-                                  <span>{formatDateShort(t1End)}</span>
-                                </div>
-                                <div className="h-9 bg-wherelse-yellow rounded-full flex items-center justify-center shadow-lg">
-                                  <span className="text-sm font-bold text-wherelse-charcoal tracking-wider uppercase">
-                                    {selectedMeetup.travelers?.[0]}
-                                  </span>
+                                {/* Traveler 2 bar */}
+                                <div 
+                                  className="absolute top-9 h-5 bg-[#7a9ac4] rounded"
+                                  style={{ 
+                                    left: `${getPos(t2Start)}%`, 
+                                    width: `${getWidth(t2Start, t2End)}%`,
+                                  }}
+                                />
+                                {/* Date markers */}
+                                <div className="absolute bottom-0 left-0 right-0 flex justify-between px-1 text-[9px] font-mono text-wherelse-cream/40">
+                                  <span>{formatDateShort(minDate)}</span>
+                                  <span>{formatDateShort(maxDate)}</span>
                                 </div>
                               </div>
                               
-                              <div 
-                                className="absolute"
-                                style={{ 
-                                  left: `${getPos(t2Start)}%`, 
-                                  width: `${getWidth(t2Start, t2End)}%`,
-                                  top: '70px'
-                                }}
-                              >
-                                <div className="flex justify-between mb-1 text-[11px] font-mono text-[#8ba4c7] font-medium">
-                                  <span>{formatDateShort(t2Start)}</span>
-                                  <span>{formatDateShort(t2End)}</span>
+                              {/* Traveler 2 */}
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-[#7a9ac4] flex items-center justify-center text-wherelse-charcoal font-bold text-lg shrink-0">
+                                  {getFirstName(selectedMeetup.travelers?.[1])?.[0]}
                                 </div>
-                                <div className="h-9 bg-[#7a9ac4] rounded-full flex items-center justify-center shadow-lg">
-                                  <span className="text-sm font-bold text-wherelse-charcoal tracking-wider uppercase">
-                                    {selectedMeetup.travelers?.[1]}
-                                  </span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-wherelse-cream truncate">
+                                    {getFirstName(selectedMeetup.travelers?.[1])}
+                                  </p>
+                                  <p className="text-xs font-mono text-[#8ba4c7]">
+                                    {formatDateShort(t2Start)} – {formatDateShort(t2End)}
+                                  </p>
                                 </div>
-                              </div>
-                              
-                              <div className="absolute bottom-0 left-0 right-0">
-                                {months.map((m, i) => (
-                                  <span
-                                    key={i}
-                                    className="absolute text-xs font-condensed text-wherelse-cream/30 tracking-widest"
-                                    style={{ left: `${m.pos}%`, transform: 'translateX(8px)' }}
-                                  >
-                                    {m.label}
-                                  </span>
-                                ))}
                               </div>
                             </div>
                           </div>
