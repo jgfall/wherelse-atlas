@@ -64,7 +64,11 @@ const DateRangePicker = ({
 
   const formatDateISO = (date) => {
     const d = new Date(date);
-    return d.toISOString().split('T')[0];
+    // Use local date parts to avoid timezone shift (toISOString converts to UTC which can change the day)
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const getDaysInMonth = (year, month) => {

@@ -133,12 +133,19 @@ export default function SharedTrip() {
     setLoading(false);
   };
   
-  // Calculate overlaps when both itineraries are loaded
+  // Only auto-compare when friend itinerary is loaded from DB (not when newly saved)
+  // For newly saved itineraries, we wait for geocoding and explicit button click
   useEffect(() => {
-    if (primaryItinerary && friendItinerary) {
-      findOverlapsBetweenTrips();
+    if (primaryItinerary && friendItinerary && !readyToCompare && !isGeocodingFriend) {
+      // Check if this is a pre-existing itinerary (loaded from DB with coords already)
+      const allFriendLegsHaveCoords = friendItinerary.legs?.every(leg => leg.lat && leg.lng);
+      if (allFriendLegsHaveCoords) {
+        // Itinerary was loaded from DB with coords, auto-compare
+        findOverlapsBetweenTrips();
+      }
+      // Otherwise, wait for geocoding to complete and user to click Compare
     }
-  }, [primaryItinerary, friendItinerary]);
+  }, [primaryItinerary?.id, friendItinerary?.id]);
   
   // Geocode friend's legs in background for map display (during building)
   useEffect(() => {
@@ -216,16 +223,29 @@ export default function SharedTrip() {
       
       // Check how many legs need geocoding
       const legsNeedingGeocode = friendItinerary.legs.filter(l => !l.lat || !l.lng);
-      if (legsNeedingGeocode.length === 0) return;
+      if (legsNeedingGeocode.length === 0) {
+        // All legs already have coords, mark as ready
+        setGeocodingComplete(true);
+        setReadyToCompare(true);
+        setIsGeocodingFriend(false);
+        return;
+      }
       
       // Don't re-run if we've already started for this itinerary
       if (friendGeocodingStarted.current) return;
       friendGeocodingStarted.current = true;
       
+      // Mark geocoding as in progress
+      setIsGeocodingFriend(true);
+      setGeocodingComplete(false);
+      setReadyToCompare(false);
+      
       console.log(`[Map Geocode] Starting geocoding for ${legsNeedingGeocode.length} of ${friendItinerary.legs.length} friend legs`);
+      setGeocodingProgress(`Geocoding locations (0/${legsNeedingGeocode.length})...`);
       
       // Get a fresh copy of the legs array
       const legsToProcess = [...friendItinerary.legs];
+      let geocodedCount = 0;
       
       for (let i = 0; i < legsToProcess.length; i++) {
         if (cancelled) break;
@@ -235,6 +255,8 @@ export default function SharedTrip() {
             const result = await geocodeLocation(leg.city, leg.country || '');
             if (result && result.lat && (result.lon || result.lng) && !cancelled) {
               console.log(`[Map Geocode] Geocoded ${leg.city}: ${result.lat}, ${result.lon || result.lng}`);
+              geocodedCount++;
+              setGeocodingProgress(`Geocoding locations (${geocodedCount}/${legsNeedingGeocode.length})...`);
               // Update state incrementally so map shows progress
               setFriendItinerary(prev => {
                 if (!prev) return prev;
@@ -254,7 +276,13 @@ export default function SharedTrip() {
         }
       }
       
-      console.log('[Map Geocode] Finished geocoding friend legs');
+      if (!cancelled) {
+        console.log('[Map Geocode] Finished geocoding friend legs');
+        setGeocodingProgress('');
+        setGeocodingComplete(true);
+        setReadyToCompare(true);
+        setIsGeocodingFriend(false);
+      }
     };
     
     if (friendItinerary?.legs?.length > 0) {
@@ -269,6 +297,8 @@ export default function SharedTrip() {
   // Reset geocoding flag when friend itinerary changes
   useEffect(() => {
     friendGeocodingStarted.current = false;
+    setGeocodingComplete(false);
+    setReadyToCompare(false);
   }, [friendItinerary?.id]);
   
   const findOverlapsBetweenTrips = async () => {
@@ -1908,11 +1938,44 @@ export default function SharedTrip() {
             <div className="flex items-center gap-3 mb-6">
               <Sparkles className="w-6 h-6 text-wherelse-yellow" />
               <h2 className="headline-xl text-3xl text-wherelse-cream">
-                {analyzing ? 'FINDING ADVENTURES...' : 'MEETUP OPPORTUNITIES'}
+                {isGeocodingFriend ? 'PREPARING YOUR TRIP...' : analyzing ? 'FINDING ADVENTURES...' : 'MEETUP OPPORTUNITIES'}
               </h2>
             </div>
             
-            {analyzing ? (
+            {/* Geocoding in progress state */}
+            {isGeocodingFriend ? (
+              <div className="card-olive p-8 md:p-12">
+                <div className="max-w-md mx-auto text-center">
+                  <div className="text-6xl mb-6 animate-pulse">🗺️</div>
+                  <p className="text-wherelse-charcoal font-body text-lg mb-2">
+                    {geocodingProgress || 'Preparing your trip...'}
+                  </p>
+                  <p className="text-wherelse-charcoal/50 text-sm font-body">
+                    We're locating your destinations on the map
+                  </p>
+                </div>
+              </div>
+            ) : readyToCompare && overlaps.length === 0 && !analyzing ? (
+              /* Ready to compare - show button */
+              <div className="card-olive p-8 md:p-12">
+                <div className="max-w-md mx-auto text-center">
+                  <div className="text-6xl mb-6">🚀</div>
+                  <p className="text-wherelse-charcoal font-body text-lg mb-2">
+                    Ready to find meetup opportunities!
+                  </p>
+                  <p className="text-wherelse-charcoal/50 text-sm font-body mb-6">
+                    We'll compare your trips and find the best places to meet up
+                  </p>
+                  <button
+                    onClick={findOverlapsBetweenTrips}
+                    className="btn-primary px-8 py-3 text-lg"
+                  >
+                    <Sparkles className="w-5 h-5 mr-2 inline" />
+                    Compare Trips
+                  </button>
+                </div>
+              </div>
+            ) : analyzing ? (
               <div className="card-olive p-8 md:p-12">
                 {/* Fun animated progress */}
                 <div className="max-w-md mx-auto">
