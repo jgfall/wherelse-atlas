@@ -131,7 +131,7 @@ export default function TripMap({
     >
       <TileLayer
         attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>'
-        url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"
+        url={`https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png${import.meta.env.VITE_STADIA_API_KEY ? `?api_key=${import.meta.env.VITE_STADIA_API_KEY}` : ''}`}
       />
       
       {allPoints.length > 0 && <FitBounds bounds={allPoints} />}
