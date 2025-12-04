@@ -14,6 +14,7 @@ import { parseItineraryImage, isValidImageFile, getImagePreviewUrl } from './uti
 const WherelseAtlas = () => {
   // Core state
   const [travelerName, setTravelerName] = useState('');
+  const [nameConfirmed, setNameConfirmed] = useState(false);
   const [legs, setLegs] = useState([]);
   const [isAddingLeg, setIsAddingLeg] = useState(false);
   
@@ -96,6 +97,7 @@ const WherelseAtlas = () => {
         })));
         if (result.travelerName) {
           setTravelerName(result.travelerName);
+          setNameConfirmed(true);
         }
         setImagePreview(null);
         // Prompt to share after successful upload
@@ -150,6 +152,7 @@ const WherelseAtlas = () => {
           })));
           if (parsedData.travelerName) {
             setTravelerName(parsedData.travelerName);
+            setNameConfirmed(true);
           }
           // Prompt to share after successful upload
           setTimeout(() => setShowShareModal(true), 500);
@@ -328,10 +331,13 @@ const WherelseAtlas = () => {
                   dates={newLegDates}
                   onLocationChange={setNewLegLocation}
                   onDatesChange={setNewLegDates}
-                  onSubmit={addLeg}
+                  onSubmit={() => {
+                    addLeg();
+                    if (travelerName.trim()) setNameConfirmed(true);
+                  }}
                   onCancel={resetAddForm}
                   suggestedStartDate={getSuggestedStartDate()}
-                  showNameInput={!travelerName}
+                  showNameInput={!nameConfirmed}
                   travelerName={travelerName}
                   onNameChange={setTravelerName}
                 />
@@ -345,18 +351,34 @@ const WherelseAtlas = () => {
           <div className="animate-fade-in space-y-8">
             {/* Trip Header */}
             <div className="text-center">
-              {!travelerName ? (
+              {!nameConfirmed ? (
                 <div className="max-w-xs mx-auto mb-6">
                   <input
                     type="text"
                     value={travelerName}
                     onChange={(e) => setTravelerName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && travelerName.trim()) {
+                        setNameConfirmed(true);
+                      }
+                    }}
+                    onBlur={() => {
+                      if (travelerName.trim()) {
+                        setNameConfirmed(true);
+                      }
+                    }}
                     placeholder="Enter your name"
                     className="w-full px-4 py-3 bg-wherelse-charcoal-dark text-wherelse-cream placeholder:text-wherelse-gray rounded-lg text-center text-lg"
+                    autoFocus
                   />
+                  <p className="text-wherelse-cream/40 text-xs mt-2">Press Enter or click away to confirm</p>
                 </div>
               ) : (
-                <h2 className="headline-xl text-3xl md:text-4xl text-wherelse-cream mb-2">
+                <h2 
+                  className="headline-xl text-3xl md:text-4xl text-wherelse-cream mb-2 cursor-pointer hover:opacity-80"
+                  onClick={() => setNameConfirmed(false)}
+                  title="Click to edit name"
+                >
                   {travelerName.toUpperCase()}'S
                   <span className="text-wherelse-yellow"> ADVENTURE</span>
                 </h2>
