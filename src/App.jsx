@@ -1252,15 +1252,16 @@ const WherelseAtlas = () => {
             {/* Dynamic Trip Preview / Builder */}
             {currentItinerary.legs.length > 0 && (
               <div className="w-full animate-slide-up">
-                {/* Full-width header */}
-                <div className="card-olive p-6 mb-6">
-                  <div className="flex items-start justify-between mb-6">
-                    <div>
-                      <p className="brand-text text-wherelse-cream opacity-60 mb-1">YOUR ITINERARY</p>
-                      <h3 className="headline-xl text-3xl text-wherelse-cream">
+                {/* Full-width header - Mobile responsive */}
+                <div className="card-olive p-4 sm:p-6 mb-6">
+                  {/* Header: stacks on mobile, side-by-side on desktop */}
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+                    <div className="min-w-0 flex-1">
+                      <p className="brand-text text-wherelse-cream opacity-60 mb-1 text-xs sm:text-sm">YOUR ITINERARY</p>
+                      <h3 className="headline-xl text-xl sm:text-2xl md:text-3xl text-wherelse-cream truncate">
                         {currentItinerary.travelerName.toUpperCase()}'S ROUTE
                       </h3>
-                      <p className="text-sm text-wherelse-cream opacity-50 font-mono mt-2">
+                      <p className="text-xs sm:text-sm text-wherelse-cream opacity-50 font-mono mt-1 sm:mt-2">
                         {currentItinerary.legs.length} {currentItinerary.legs.length === 1 ? 'leg' : 'legs'} • {calculateTotalDays(currentItinerary.legs)} days
                         {currentItinerary.legs.filter(l => l.isValid === false).length > 0 && (
                           <span className="text-wherelse-red ml-2">
@@ -1269,32 +1270,33 @@ const WherelseAtlas = () => {
                         )}
                       </p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    {/* Buttons: full width on mobile, auto on desktop */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
                       <button
                         onClick={() => {
                           setNewLegLocation(null);
                           setNewLegDates({ startDate: null, endDate: null });
                           setIsAddingLeg(true);
                         }}
-                        className="btn-secondary text-wherelse-cream border-wherelse-cream/30 hover:border-wherelse-cream flex items-center gap-2"
+                        className="btn-secondary text-wherelse-cream border-wherelse-cream/30 hover:border-wherelse-cream flex items-center justify-center gap-2 text-sm py-2 sm:py-auto"
                       >
                         <Plus className="w-4 h-4" />
-                        Quick Add
+                        <span className="sm:inline">Add Stop</span>
                       </button>
                       <button 
                         onClick={saveItinerary} 
                         disabled={currentItinerary.legs.some(l => l.isValid === false)}
-                        className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed text-sm py-2 sm:py-auto"
                       >
-                        {editingItineraryId ? 'Update Itinerary' : 'Save & Continue'}
+                        {editingItineraryId ? 'Update' : 'Save & Continue'}
                       </button>
                     </div>
                   </div>
                   
-                  {/* Timeline Visualization */}
-                  <div className="mb-6">
-                    <p className="brand-text text-wherelse-cream opacity-60 mb-3 text-xs">TIMELINE</p>
-                    <TripTimeline legs={currentItinerary.legs} height="120px" />
+                  {/* Timeline Visualization - smaller on mobile */}
+                  <div>
+                    <p className="brand-text text-wherelse-cream opacity-60 mb-2 sm:mb-3 text-xs">TIMELINE</p>
+                    <TripTimeline legs={currentItinerary.legs} height="100px" />
                   </div>
                 </div>
                 
