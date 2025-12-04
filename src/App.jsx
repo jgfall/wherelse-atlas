@@ -34,6 +34,7 @@ const WherelseAtlas = () => {
   const [addingLegToItinerary, setAddingLegToItinerary] = useState(null); // itineraryId
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodingProgress, setGeocodingProgress] = useState('');
+  const [aiAnalysis, setAiAnalysis] = useState(null); // Best option summary from AI comparison
 
   // New leg form state
   const [newLegLocation, setNewLegLocation] = useState(null);
@@ -148,12 +149,12 @@ const WherelseAtlas = () => {
     setIsAnimating(true);
     setIsGeocoding(true);
     setGeocodingProgress('Analyzing travel itineraries with AI...');
+    setAiAnalysis(null);
     
     // Validate we have at least 2 itineraries
     if (itineraries.length < 2) {
       setIsGeocoding(false);
       setOverlaps([]);
-      setActiveView('overlaps');
       setIsAnimating(false);
       return;
     }
@@ -166,7 +167,6 @@ const WherelseAtlas = () => {
     if (!primaryItinerary.legs.length || !friendItinerary.legs.length) {
       setIsGeocoding(false);
       setOverlaps([]);
-      setActiveView('overlaps');
       setIsAnimating(false);
       return;
     }
@@ -188,6 +188,7 @@ const WherelseAtlas = () => {
       if (result.noGoodOptions) {
         console.log('[AI Compare] No viable meetup options found:', result.reason);
         setOverlaps([]);
+        setAiAnalysis(null);
       } else {
         // Sort by type priority: natural > near-miss > potential
         const sortedOverlaps = (result.overlaps || []).sort((a, b) => {
@@ -199,26 +200,24 @@ const WherelseAtlas = () => {
         });
         
         setOverlaps(sortedOverlaps);
-      }
-      
-      // Store best option for potential UI display
-      if (result.bestOption) {
-        console.log('[AI Compare] Best option:', result.bestOption.summary);
+        
+        // Store best option for UI display
+        if (result.bestOption) {
+          setAiAnalysis(result.bestOption);
+          console.log('[AI Compare] Best option:', result.bestOption.summary);
+        }
       }
       
     } catch (error) {
       console.error('[AI Compare] Error:', error);
       // On error, set empty overlaps
       setOverlaps([]);
+      setAiAnalysis(null);
     }
     
     setIsGeocoding(false);
     setGeocodingProgress('');
-    
-    setTimeout(() => {
-      setActiveView('overlaps');
-      setIsAnimating(false);
-    }, 300);
+    setIsAnimating(false);
   };
 
   const addLegToCurrentItinerary = (legData) => {
@@ -934,15 +933,11 @@ const WherelseAtlas = () => {
                 )}
               </button>
               <button
-                onClick={findOverlaps}
-                disabled={itineraries.length < 2 || isGeocoding}
-                className={`tab-item ${activeView === 'overlaps' ? 'active' : ''} disabled:opacity-40`}
+                onClick={() => setActiveView('compare')}
+                disabled={itineraries.length < 2}
+                className={`tab-item ${activeView === 'compare' ? 'active' : ''} disabled:opacity-40`}
               >
-                {isGeocoding ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                ) : (
-                  'Overlaps'
-                )}
+                Compare
               </button>
             </nav>
           </div>
@@ -1766,15 +1761,15 @@ const WherelseAtlas = () => {
           </div>
         )}
 
-        {/* Overlaps View */}
-        {activeView === 'overlaps' && (
+        {/* Compare View */}
+        {activeView === 'compare' && (
           <div className="space-y-6 animate-fade-in">
-            {/* Header with stats inline */}
+            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <h2 className="headline-xl text-2xl text-wherelse-cream">
-                WHERE PATHS <span className="text-wherelse-yellow">CROSS</span>
+                {isGeocoding ? 'FINDING ADVENTURES...' : 'MEETUP OPPORTUNITIES'}
               </h2>
-              {overlaps.length > 0 && (
+              {overlaps.length > 0 && !isGeocoding && (
                 <div className="flex items-center gap-4 text-sm flex-wrap">
                   {overlaps.filter(o => o.type === 'natural').length > 0 && (
                     <span className="flex items-center gap-2">
@@ -1798,16 +1793,57 @@ const WherelseAtlas = () => {
               )}
             </div>
             
-            {overlaps.length === 0 ? (
-              <div className="card-olive p-12 text-center">
-                <p className="text-wherelse-cream opacity-70 mb-2">No meetup opportunities found</p>
-                <p className="text-sm text-wherelse-cream opacity-50">
-                  {itineraries.length < 2 
-                    ? 'Add at least 2 itineraries to find meetups'
-                    : 'Your paths are too far apart'}
-                </p>
+            {/* Analyzing state */}
+            {isGeocoding ? (
+              <div className="card-olive p-8 md:p-12">
+                <div className="max-w-md mx-auto text-center">
+                  <div className="text-6xl mb-6 animate-bounce">🔍</div>
+                  <p className="text-wherelse-charcoal font-body text-lg mb-2">
+                    {geocodingProgress || 'Analyzing your trips...'}
+                  </p>
+                  <p className="text-wherelse-charcoal/50 text-sm font-body">
+                    Hang tight, we're finding the magic ✨
+                  </p>
+                </div>
+              </div>
+            ) : overlaps.length === 0 ? (
+              <div className="card-olive p-8 md:p-12">
+                <div className="max-w-md mx-auto text-center">
+                  <div className="text-6xl mb-6">🚀</div>
+                  <p className="text-wherelse-charcoal font-body text-lg mb-2">
+                    Ready to find meetup opportunities!
+                  </p>
+                  <p className="text-wherelse-charcoal/50 text-sm font-body mb-6">
+                    {itineraries.length < 2 
+                      ? 'Add at least 2 itineraries to compare'
+                      : `Compare ${itineraries[0]?.travelerName || 'Traveler 1'}'s trip with ${itineraries[1]?.travelerName || 'Traveler 2'}'s trip`}
+                  </p>
+                  <button
+                    onClick={findOverlaps}
+                    disabled={itineraries.length < 2}
+                    className="btn-primary px-8 py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Sparkles className="w-5 h-5 mr-2 inline" />
+                    Compare Trips
+                  </button>
+                </div>
               </div>
             ) : (
+              <>
+                {/* AI Analysis Banner */}
+                {aiAnalysis && (
+                  <div className="p-4 rounded-xl bg-wherelse-yellow/10 border border-wherelse-yellow/30">
+                    <p className="text-wherelse-cream font-body text-lg">
+                      <span className="text-wherelse-yellow">✨ Best bet:</span> {aiAnalysis.summary}
+                    </p>
+                    {aiAnalysis.action && (
+                      <p className="text-wherelse-cream/60 text-sm font-body mt-1">
+                        💡 {aiAnalysis.action}
+                      </p>
+                    )}
+                  </div>
+                )}
+              
               <div className="space-y-8">
                 {/* Natural Overlaps */}
                 {overlaps.filter(o => o.type === 'natural').length > 0 && (
@@ -2453,6 +2489,7 @@ const WherelseAtlas = () => {
                   </div>
                 )}
               </div>
+              </>
             )}
           </div>
         )}
