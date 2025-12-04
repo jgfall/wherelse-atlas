@@ -186,8 +186,9 @@ const DateRangePicker = ({
     const days = [];
     
     // Empty cells for days before the first of the month
+    // Use larger cells on mobile for better touch targets
     for (let i = 0; i < firstDay; i++) {
-      days.push(<div key={`empty-${i}`} className="w-9 h-9" />);
+      days.push(<div key={`empty-${i}`} className="w-9 h-9 md:w-11 md:h-11" />);
     }
     
     // Days of the month
@@ -210,7 +211,8 @@ const DateRangePicker = ({
           onMouseEnter={() => selecting === 'end' && tempStart && setHoverDate(dateStr)}
           onMouseLeave={() => setHoverDate(null)}
           className={`
-            w-9 h-9 text-sm font-medium transition-all relative
+            w-9 h-9 md:w-11 md:h-11 text-sm md:text-base font-medium transition-all relative
+            [touch-action:manipulation] active:scale-95
             ${isDisabled 
               ? 'text-wherelse-gray/40 cursor-not-allowed' 
               : isSelected
@@ -234,19 +236,19 @@ const DateRangePicker = ({
     
     return (
       <div className="w-full">
-        <div className="text-center mb-3">
-          <span className="font-condensed font-semibold text-wherelse-cream">
+        <div className="text-center mb-3 md:mb-4">
+          <span className="font-condensed font-semibold text-wherelse-cream text-base md:text-lg">
             {MONTHS[month]} {year}
           </span>
         </div>
-        <div className="grid grid-cols-7 gap-0.5 mb-2">
+        <div className="grid grid-cols-7 gap-0.5 md:gap-1 mb-2 md:mb-3">
           {DAYS.map(day => (
-            <div key={day} className="w-9 h-8 flex items-center justify-center text-xs text-wherelse-gray font-medium">
+            <div key={day} className="w-9 h-8 md:w-11 md:h-10 flex items-center justify-center text-xs md:text-sm text-wherelse-gray font-medium">
               {day}
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-7 gap-0.5">
+        <div className="grid grid-cols-7 gap-0.5 md:gap-1">
           {days}
         </div>
       </div>
@@ -277,100 +279,106 @@ const DateRangePicker = ({
 
       {/* Calendar Dropdown */}
       {isOpen && (
-        <div className="absolute z-50 mt-1 left-0 bg-wherelse-charcoal border border-wherelse-charcoal-dark shadow-2xl p-4 animate-scale-in">
-          {/* Selection indicator */}
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-wherelse-charcoal-dark">
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={() => setSelecting('start')}
-                className={`text-xs font-medium px-3 py-1.5 transition-colors ${
-                  selecting === 'start' 
-                    ? 'bg-wherelse-yellow text-wherelse-charcoal' 
-                    : 'text-wherelse-gray hover:text-wherelse-cream'
-                }`}
-              >
-                {tempStart ? formatDateDisplay(tempStart) : 'Start Date'}
-              </button>
-              <span className="text-wherelse-gray">→</span>
-              <button
-                type="button"
-                onClick={() => tempStart && setSelecting('end')}
-                disabled={!tempStart}
-                className={`text-xs font-medium px-3 py-1.5 transition-colors ${
-                  selecting === 'end' 
-                    ? 'bg-wherelse-yellow text-wherelse-charcoal' 
-                    : tempStart 
-                      ? 'text-wherelse-gray hover:text-wherelse-cream'
-                      : 'text-wherelse-gray/30 cursor-not-allowed'
-                }`}
-              >
-                {tempEnd ? formatDateDisplay(tempEnd) : 'End Date'}
-              </button>
-            </div>
-            <p className="text-xs text-wherelse-gray">
-              {selecting === 'start' ? 'Select start date' : 'Select end date'}
-            </p>
-          </div>
-
-          {/* Month Navigation */}
-          <div className="flex items-center justify-between mb-4">
-            <button
-              type="button"
-              onClick={() => navigateMonth(-1)}
-              className="p-2 text-wherelse-gray hover:text-wherelse-cream hover:bg-wherelse-charcoal-dark transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => navigateMonth(1)}
-              className="p-2 text-wherelse-gray hover:text-wherelse-cream hover:bg-wherelse-charcoal-dark transition-colors"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Two Month View */}
-          <div className="flex gap-6">
-            {renderCalendar(0)}
-            {renderCalendar(1)}
-          </div>
-
-          {/* Quick Actions */}
-          <div className="flex items-center justify-between mt-4 pt-3 border-t border-wherelse-charcoal-dark">
-            <div className="flex gap-2">
-              {[7, 14, 30].map(days => (
+        <>
+          {/* Mobile: Full screen overlay */}
+          <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsOpen(false)} />
+          <div className="fixed inset-x-0 bottom-0 md:absolute md:inset-auto md:mt-1 md:left-0 z-50 bg-wherelse-charcoal border-t md:border border-wherelse-charcoal-dark shadow-2xl p-4 md:p-4 md:rounded-lg animate-scale-in max-h-[90vh] md:max-h-[600px] overflow-y-auto">
+            {/* Selection indicator */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 md:mb-4 pb-3 border-b border-wherelse-charcoal-dark">
+              <div className="flex items-center gap-3 md:gap-4 mb-2 md:mb-0">
                 <button
-                  key={days}
                   type="button"
-                  onClick={() => {
-                    const start = new Date();
-                    const end = new Date();
-                    end.setDate(end.getDate() + days);
-                    setTempStart(formatDateISO(start));
-                    setTempEnd(formatDateISO(end));
-                    onRangeSelect({
-                      startDate: formatDateISO(start),
-                      endDate: formatDateISO(end)
-                    });
-                    setIsOpen(false);
-                  }}
-                  className="text-xs text-wherelse-gray hover:text-wherelse-cream px-2 py-1 hover:bg-wherelse-charcoal-dark transition-colors"
+                  onClick={() => setSelecting('start')}
+                  className={`text-sm md:text-xs font-medium px-4 py-2.5 md:px-3 md:py-1.5 transition-colors [touch-action:manipulation] ${
+                    selecting === 'start' 
+                      ? 'bg-wherelse-yellow text-wherelse-charcoal' 
+                      : 'text-wherelse-gray hover:text-wherelse-cream bg-wherelse-charcoal-dark'
+                  }`}
                 >
-                  {days}d
+                  {tempStart ? formatDateDisplay(tempStart) : 'Start Date'}
                 </button>
-              ))}
+                <span className="text-wherelse-gray">→</span>
+                <button
+                  type="button"
+                  onClick={() => tempStart && setSelecting('end')}
+                  disabled={!tempStart}
+                  className={`text-sm md:text-xs font-medium px-4 py-2.5 md:px-3 md:py-1.5 transition-colors [touch-action:manipulation] ${
+                    selecting === 'end' 
+                      ? 'bg-wherelse-yellow text-wherelse-charcoal' 
+                      : tempStart 
+                        ? 'text-wherelse-gray hover:text-wherelse-cream bg-wherelse-charcoal-dark'
+                        : 'text-wherelse-gray/30 cursor-not-allowed bg-wherelse-charcoal-dark'
+                  }`}
+                >
+                  {tempEnd ? formatDateDisplay(tempEnd) : 'End Date'}
+                </button>
+              </div>
+              <p className="text-sm md:text-xs text-wherelse-gray mt-2 md:mt-0">
+                {selecting === 'start' ? 'Select start date' : 'Select end date'}
+              </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className="text-xs text-wherelse-gray hover:text-wherelse-cream"
-            >
-              Cancel
-            </button>
+
+            {/* Month Navigation */}
+            <div className="flex items-center justify-between mb-4">
+              <button
+                type="button"
+                onClick={() => navigateMonth(-1)}
+                className="p-3 md:p-2 text-wherelse-gray hover:text-wherelse-cream hover:bg-wherelse-charcoal-dark transition-colors [touch-action:manipulation] rounded-lg"
+              >
+                <ChevronLeft className="w-5 h-5 md:w-4 md:h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => navigateMonth(1)}
+                className="p-3 md:p-2 text-wherelse-gray hover:text-wherelse-cream hover:bg-wherelse-charcoal-dark transition-colors [touch-action:manipulation] rounded-lg"
+              >
+                <ChevronRight className="w-5 h-5 md:w-4 md:h-4" />
+              </button>
+            </div>
+
+            {/* Calendar View - Single month on mobile, two months on desktop */}
+            <div className="flex gap-4 md:gap-6">
+              {renderCalendar(0)}
+              <div className="hidden md:block">
+                {renderCalendar(1)}
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="flex items-center justify-between mt-6 md:mt-4 pt-4 md:pt-3 border-t border-wherelse-charcoal-dark">
+              <div className="flex gap-3 md:gap-2">
+                {[7, 14, 30].map(days => (
+                  <button
+                    key={days}
+                    type="button"
+                    onClick={() => {
+                      const start = new Date();
+                      const end = new Date();
+                      end.setDate(end.getDate() + days);
+                      setTempStart(formatDateISO(start));
+                      setTempEnd(formatDateISO(end));
+                      onRangeSelect({
+                        startDate: formatDateISO(start),
+                        endDate: formatDateISO(end)
+                      });
+                      setIsOpen(false);
+                    }}
+                    className="text-sm md:text-xs text-wherelse-gray hover:text-wherelse-cream px-4 py-2 md:px-2 md:py-1 hover:bg-wherelse-charcoal-dark transition-colors [touch-action:manipulation] rounded-lg"
+                  >
+                    {days}d
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="text-sm md:text-xs text-wherelse-gray hover:text-wherelse-cream px-4 py-2 md:px-0 md:py-0 [touch-action:manipulation]"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
