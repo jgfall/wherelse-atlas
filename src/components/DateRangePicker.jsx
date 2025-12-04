@@ -16,10 +16,19 @@ const DateRangePicker = ({
   blockedRanges = [], // Array of { startDate, endDate } objects for dates that are already booked
   className = ""
 }) => {
+  // Parse YYYY-MM-DD string as local date to avoid timezone issues
+  const parseLocalDate = (dateStr) => {
+    if (typeof dateStr === 'string' && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      return new Date(year, month - 1, day);
+    }
+    return new Date(dateStr);
+  };
+
   const [isOpen, setIsOpen] = useState(false);
   const [viewDate, setViewDate] = useState(() => {
-    if (startDate) return new Date(startDate);
-    if (suggestedStartDate) return new Date(suggestedStartDate);
+    if (startDate) return parseLocalDate(startDate);
+    if (suggestedStartDate) return parseLocalDate(suggestedStartDate);
     return new Date();
   });
   const [selecting, setSelecting] = useState('start'); // 'start' or 'end'
@@ -49,16 +58,25 @@ const DateRangePicker = ({
       setSelecting('start');
       // Set view to startDate, suggestedStartDate, or current date
       if (startDate) {
-        setViewDate(new Date(startDate));
+        setViewDate(parseLocalDate(startDate));
       } else if (suggestedStartDate) {
-        setViewDate(new Date(suggestedStartDate));
+        setViewDate(parseLocalDate(suggestedStartDate));
       }
     }
   }, [isOpen, startDate, endDate, suggestedStartDate]);
 
   const formatDateDisplay = (date) => {
     if (!date) return '—';
-    const d = new Date(date);
+    // Parse the date string as local time to avoid timezone shift
+    // Input can be a Date object or a string like "2024-12-08"
+    let d;
+    if (typeof date === 'string' && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      // Parse YYYY-MM-DD as local date, not UTC
+      const [year, month, day] = date.split('-').map(Number);
+      d = new Date(year, month - 1, day);
+    } else {
+      d = new Date(date);
+    }
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
@@ -84,9 +102,9 @@ const DateRangePicker = ({
     const end = tempEnd || hoverDate;
     if (!end) return false;
     
-    const d = new Date(date);
-    const s = new Date(tempStart);
-    const e = new Date(end);
+    const d = parseLocalDate(date);
+    const s = parseLocalDate(tempStart);
+    const e = parseLocalDate(end);
     
     return d >= s && d <= e;
   };
@@ -99,10 +117,10 @@ const DateRangePicker = ({
 
   const isDateDisabled = (date) => {
     const dateStr = formatDateISO(date);
-    const dateObj = new Date(date);
+    const dateObj = parseLocalDate(dateStr);
     
     // Check if date is before minDate (if provided)
-    if (minDate && dateObj < new Date(minDate)) {
+    if (minDate && dateObj < parseLocalDate(minDate)) {
       return true;
     }
     
@@ -110,8 +128,8 @@ const DateRangePicker = ({
     for (const range of blockedRanges) {
       if (!range.startDate || !range.endDate) continue;
       
-      const rangeStart = new Date(range.startDate);
-      const rangeEnd = new Date(range.endDate);
+      const rangeStart = parseLocalDate(range.startDate);
+      const rangeEnd = parseLocalDate(range.endDate);
       
       // Disable dates that overlap with existing legs
       if (dateObj >= rangeStart && dateObj <= rangeEnd) {
@@ -131,7 +149,7 @@ const DateRangePicker = ({
       setSelecting('end');
     } else {
       // If clicked date is before start, swap them
-      if (new Date(dateStr) < new Date(tempStart)) {
+      if (parseLocalDate(dateStr) < parseLocalDate(tempStart)) {
         setTempEnd(tempStart);
         setTempStart(dateStr);
       } else {
@@ -140,8 +158,8 @@ const DateRangePicker = ({
       // Auto-confirm after selecting end
       setTimeout(() => {
         onRangeSelect({
-          startDate: new Date(dateStr) < new Date(tempStart) ? dateStr : tempStart,
-          endDate: new Date(dateStr) < new Date(tempStart) ? tempStart : dateStr
+          startDate: parseLocalDate(dateStr) < parseLocalDate(tempStart) ? dateStr : tempStart,
+          endDate: parseLocalDate(dateStr) < parseLocalDate(tempStart) ? tempStart : dateStr
         });
         setIsOpen(false);
       }, 150);

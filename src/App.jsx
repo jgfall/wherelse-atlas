@@ -1696,52 +1696,27 @@ const WherelseAtlas = () => {
                                   <button
                                     onClick={async () => {
                                       if (newLegLocation && newLegDates.startDate && newLegDates.endDate) {
-                                        setValidatingLocation(true);
-                                        setLocationValidationError(null);
-                                        
-                                        try {
-                                          const geocoded = await geocodeLocation(newLegLocation.city, newLegLocation.country);
-                                          
-                                          if (geocoded && !geocoded.error && geocoded.lat && geocoded.lon) {
-                                            await addLegToItinerary(itinerary.id, {
-                                              city: geocoded.city || newLegLocation.city,
-                                              country: geocoded.country || newLegLocation.country,
-                                              startDate: newLegDates.startDate,
-                                              endDate: newLegDates.endDate,
-                                              lat: geocoded.lat,
-                                              lng: geocoded.lon,
-                                              canonicalCity: geocoded.city,
-                                              canonicalCountry: geocoded.country,
-                                              isValid: true
-                                            });
-                                            setNewLegLocation(null);
-                                            setNewLegDates({ startDate: null, endDate: null });
-                                            setLocationValidationError(null);
-                                          } else {
-                                            setLocationValidationError('Could not find this location. Please check the spelling.');
-                                          }
-                                        } catch (error) {
-                                          console.error('Error validating location:', error);
-                                          setLocationValidationError('Error validating location. Please try again.');
-                                        } finally {
-                                          setValidatingLocation(false);
-                                        }
+                                        // LocationAutocomplete already provides lat/lng from Photon API
+                                        // No need to re-geocode with slow Nominatim
+                                        await addLegToItinerary(itinerary.id, {
+                                          city: newLegLocation.city,
+                                          country: newLegLocation.country,
+                                          startDate: newLegDates.startDate,
+                                          endDate: newLegDates.endDate,
+                                          lat: newLegLocation.lat,
+                                          lng: newLegLocation.lng,
+                                          canonicalCity: newLegLocation.city,
+                                          canonicalCountry: newLegLocation.country,
+                                          isValid: true
+                                        });
+                                        setNewLegLocation(null);
+                                        setNewLegDates({ startDate: null, endDate: null });
                                       }
                                     }}
-                                    disabled={validatingLocation}
-                                    className="w-full py-3 bg-wherelse-yellow text-wherelse-charcoal font-bold rounded-lg hover:bg-wherelse-yellow/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    className="w-full py-3 bg-wherelse-yellow text-wherelse-charcoal font-bold rounded-lg hover:bg-wherelse-yellow/90 transition-colors flex items-center justify-center gap-2"
                                   >
-                                    {validatingLocation ? (
-                                      <>
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        Validating...
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Plus className="w-4 h-4" />
-                                        Add to Route
-                                      </>
-                                    )}
+                                    <Plus className="w-4 h-4" />
+                                    Add to Route
                                   </button>
                                 )}
                               </div>
