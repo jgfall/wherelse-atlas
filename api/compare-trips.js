@@ -52,17 +52,21 @@ TRAVELERS:
 STRICT RULES FOR MEETUP SUGGESTIONS:
 1. "natural" = SAME CITY + dates actually overlap (overlapDays > 0)
 2. "near-miss" = SAME CITY but dates don't overlap, gap ≤ 30 days
-3. "potential" = ONLY for a TRUE HALFWAY POINT between two different cities:
-   - The meetup city MUST be different from BOTH travelers' locations
-   - It should be roughly equidistant from both, a fair compromise
-   - NEVER suggest one person just travels to where the other already is
-   - Both travelers must travel to meet - that's what makes it "potential"
+3. "potential" = ONLY when travelers are in DIFFERENT nearby cities with overlapping dates:
+   - The "city" field MUST be a REAL, SPECIFIC CITY NAME (e.g., "Brussels", "Munich", "Lyon")
+   - NEVER use generic text like "Meet halfway" or "Midpoint" as the city name
+   - For potential meetups, choose the closest major city between their two locations
+   - Example: If one is in Paris and one in Berlin, suggest "Cologne" or "Frankfurt" or "Brussels"
    - Only suggest if cities are ≤ 500km apart AND dates overlap
 4. DO NOT suggest meetups when:
    - Cities are more than 500km apart with no date overlap
    - Gap between visits is more than 7 days
-   - The suggested meetup city is the same as either traveler's current city
    - Would require someone to completely change their itinerary
+
+CRITICAL - TRAVELER INFO MUST BE COMPLETE:
+For each meetup, you MUST include where each traveler is coming FROM with their ACTUAL city from their itinerary.
+- "${name1}" object: The city/dates from ${name1}'s itinerary during the meetup window
+- "${name2}" object: The city/dates from ${name2}'s itinerary during the meetup window
 
 PRIORITY ORDER:
 1. Same city, dates overlap = HIGHEST priority (natural)
@@ -76,20 +80,20 @@ Return ONLY this JSON structure with 1-5 meetup options (fewer is better than ba
     {
       "type": "natural|near-miss|potential",
       "priority": 1,
-      "city": "Meetup City",
+      "city": "REAL CITY NAME (never 'Meet halfway')",
       "country": "Country",
       "startDate": "YYYY-MM-DD",
       "endDate": "YYYY-MM-DD",
       "days": 5,
       "gapDays": 0,
       "${name1}": {
-        "city": "City where ${name1} is coming from",
+        "city": "${name1}'s ACTUAL city from their itinerary",
         "country": "Country",
         "startDate": "YYYY-MM-DD",
         "endDate": "YYYY-MM-DD"
       },
       "${name2}": {
-        "city": "City where ${name2} is coming from", 
+        "city": "${name2}'s ACTUAL city from their itinerary", 
         "country": "Country",
         "startDate": "YYYY-MM-DD",
         "endDate": "YYYY-MM-DD"
@@ -105,7 +109,10 @@ Return ONLY this JSON structure with 1-5 meetup options (fewer is better than ba
   "noGoodOptions": false
 }
 
-IMPORTANT: Use "${name1}" and "${name2}" as the keys for traveler info, NOT "traveler1From" or "traveler2From".
+IMPORTANT RULES:
+1. Use "${name1}" and "${name2}" as the keys for traveler info, NOT "traveler1From" or "traveler2From"
+2. NEVER use "Meet halfway" or any generic text as a city name - always use a REAL city
+3. Each traveler's info MUST include their actual city from their itinerary
 
 If there are NO realistic meetup opportunities (different continents, months apart, etc.), return:
 {
@@ -126,17 +133,26 @@ If there are NO realistic meetup opportunities (different continents, months apa
         messages: [
           {
             role: 'system',
-            content: `You are a travel meetup analyzer. You MUST be strict about what constitutes a viable meetup:
-- Same city visits that overlap or nearly overlap = ALWAYS include as "natural" or "near-miss"
-- For "potential" meetups: ALWAYS suggest a TRUE HALFWAY POINT that is DIFFERENT from both travelers' cities
-  * NEVER suggest one person just goes to the other's location
-  * The meetup city must require BOTH people to travel
-  * Example: If A is in Paris and B is in Berlin, suggest meeting in Brussels or Frankfurt, NOT Paris or Berlin
-- Far-apart cities (>500km) = ONLY if dates overlap AND there's a sensible midpoint city
-- Different continents or >1000km apart with no date overlap = DO NOT suggest a meetup
+            content: `You are a travel meetup analyzer. You MUST follow these rules STRICTLY:
 
-Be conservative. It's better to return 1-2 great options than 5 mediocre ones.
-Return ONLY valid JSON.`
+CITY NAMES:
+- NEVER use "Meet halfway", "Midpoint", or any generic placeholder as a city name
+- ALWAYS use REAL, SPECIFIC city names (e.g., "Brussels", "Munich", "Lyon", "Prague")
+- For "potential" meetups between different cities, pick a real city between them
+
+TRAVELER INFO:
+- Each meetup MUST include complete info for BOTH travelers
+- Use the traveler's NAME as the key (e.g., "Jeff": {...}, "Chris": {...})
+- Include their ACTUAL city from their itinerary, not generic text
+
+MEETUP TYPES:
+- "natural" = Same city, dates overlap
+- "near-miss" = Same city, dates within a few days
+- "potential" = Different nearby cities, suggest a REAL city between them
+
+QUALITY:
+- Be conservative - 1-2 great options beats 5 mediocre ones
+- Return ONLY valid JSON`
           },
           {
             role: 'user',
